@@ -1,0 +1,218 @@
+openapi: "3.0.0"
+info:
+  version: 1.5.0
+  title: Encryption Service
+paths:
+  /ping:
+    get:
+      summary: A pingable endpoint to demonstrate that the service is up
+      operationId: ping
+      security: []   # No security
+      responses:
+        '204':
+          description: Success response to a ping request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+  /deep-ping:
+    get:
+      summary: A pingable endpoint to demonstrate that the service is up and it can call all dependent services
+      operationId: deep-ping
+      security: []   # No security
+      responses:
+        '204':
+          description: Success response to a ping request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+  /onboard:
+    post:
+      summary: Onboard endpoint
+      operationId: onboard
+      security:
+      - Bearer: []
+      responses:
+        '201':
+          $ref: '#/components/responses/OnboardResponseBody'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '412':
+          description: Client already onboarded
+          $ref: '#/components/responses/PreconditionFailed'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /encrypt:
+    post:
+      summary: Encryption endpoint
+      operationId: encrypt
+      security:
+      - Bearer: []
+      requestBody:
+        description: A JSON object containing the information required for an encrypt operation
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncryptRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/EncryptResponseBody'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '412':
+          description: Client not onboarded
+          $ref: '#/components/responses/PreconditionFailed'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /decrypt:
+    post:
+      summary: Decryption endpoint
+      operationId: decrypt
+      security:
+      - Bearer: []
+      requestBody:
+        description: A JSON object containing the information required for a decrypt operation
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecryptRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/DecryptResponseBody'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '412':
+          description: Client not onboarded
+          $ref: '#/components/responses/PreconditionFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  securitySchemes:
+    Bearer:  # arbitrary name for the security scheme
+      type: http
+      scheme: bearer
+      bearerFormat: "Should be of the form provided by identity i.e. [a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{8}"   # optional, arbitrary value for documentation purposes
+  responses:
+    Forbidden:
+      description: Access token is not authorised to perform action
+    Unauthorized:
+      description: Access token is missing or invalid
+    PreconditionFailed:
+      description: Precondition Failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServiceUnavailable:
+      description: Service Unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    EncryptResponseBody:
+      description: The response to a successful encryption request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/EncryptResponse'
+    DecryptResponseBody:
+      description: The response to a successful decryption request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DecryptResponse'
+    OnboardResponseBody:
+      description: The response to a successful onboard request
+  schemas:
+    Status:
+      type: object
+      additionalProperties: false
+      required:
+      - apiVersion
+      - applicationVersion
+      properties:
+        apiVersion:
+          type: string
+        applicationVersion:
+          type: string
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+      - errorMessage
+      properties:
+        message:
+          type: string
+        stackTrace: # only when trace level logging enabled
+          type: string
+    EncryptRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - plaintext
+      - encryptionContext
+      properties:
+        plaintext:
+          type: string
+          format: bytes
+        encryptionContext:
+          $ref: '#/components/schemas/EncryptionContext'
+    EncryptResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - ciphertext
+      - encryptedDataEncryptionKey
+      properties:
+        ciphertext:
+          type: string
+          format: bytes
+        encryptedDataEncryptionKey:
+          type: string
+          format: bytes
+    DecryptRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - ciphertext
+      - encryptedDataEncryptionKey
+      properties:
+        ciphertext:
+          type: string
+          format: bytes
+        encryptedDataEncryptionKey:
+          type: string
+          format: bytes
+    DecryptResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - plaintext
+      - encryptionContext
+      properties:
+        plaintext:
+          type: string
+          format: bytes
+        encryptionContext:
+          $ref: '#/components/schemas/EncryptionContext'
+    EncryptionContext:
+      type: object
+      additionalProperties: true
+      required:
+      - urn
+      properties:
+        urn:
+          type: string
